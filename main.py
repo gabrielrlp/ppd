@@ -33,8 +33,14 @@ class ReliableBroadcast():
 		while True:
 			msg = q_co_rb.get()
 			q_rb_beb.put(msg)
-	def deliver(self, q_beb_rb, q_rb_co):
-		
+
+	def deliver(self, q_rb_beb, q_beb_rb, q_rb_co):
+		while True:		
+			msg = q_beb_rb.get()	
+			#msg[0] = ip
+			#delivered.get(msg[0],None)
+
+
 class BestEfforBroadcast():
     def broadcast(self, q_rb_beb, q_beb_pp):
         while True:
@@ -47,8 +53,9 @@ class BestEfforBroadcast():
     def deliver(self, q_pp_beb, q_beb_rb):
         while True:
             data = q_pp_beb.get()
-            msg = '[{}] {}'.format(data[0][0], data[1]) # msg, user
-            q_beb_api.put(msg)
+            #msg = '[{}] {}'.format(data[0][0], data[1]) # msg, user
+			msg = [data[0][0], data[1]]
+            q_beb_rb.put(msg)
 
 class PerfectPoint2PointLinks():         
     def server(self, host, q_pp_beb):
