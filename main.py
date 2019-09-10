@@ -9,29 +9,42 @@ import time
 parser = argparse.ArgumentParser()
 parser.add_argument('--ip', help="The current machine IP address.", required=True)
 
-users = ['15.29.225.115', '15.8.142.92']
+users = ['10.32.169.44', '10.32.169.74', '10.32.169.54']
 port = 8066
 
 class Application():
-    def keyboard(self, q_api_beb):
+    def keyboard(self, q_api_co):
         while True:
             msg = raw_input('>>> ')
-            q_api_beb.put(msg)
+            q_api_co.put(msg)
 
-    def display(self, q_beb_api):
+    def display(self, q_co_api):
         while True:
-            print(q_beb_api.get())
+            print(q_co_api.get())
 
+class CausalOrderBroadcast():
+	def broadcast(self, q_api_co, q_co_rb):
+	
+	def deliver(self, q_rb_co, q_co_api):
+
+
+class ReliableBroadcast():
+	def broadcast(self, q_co_rb, q_rb_beb):
+		while True:
+			msg = q_co_rb.get()
+			q_rb_beb.put(msg)
+	def deliver(self, q_beb_rb, q_rb_co):
+		
 class BestEfforBroadcast():
-    def broadcast(self, q_api_beb, q_beb_pp):
+    def broadcast(self, q_rb_beb, q_beb_pp):
         while True:
-            msg = q_api_beb.get()
+            msg = q_rb_beb.get()
             # send N vezes para os usuarios
             for u in users:
                 data = [u, msg]
                 q_beb_pp.put(data)
     
-    def deliver(self, q_pp_beb, q_beb_api):
+    def deliver(self, q_pp_beb, q_beb_rb):
         while True:
             data = q_pp_beb.get()
             msg = '[{}] {}'.format(data[0][0], data[1]) # msg, user
