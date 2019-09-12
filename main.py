@@ -15,7 +15,8 @@ port = 8066
 class Application():
     def keyboard(self, q_api_co):
         while True:
-            msg = raw_input('>>> ')
+            raw_msg = raw_input('>>> ')
+            msg = [raw_msg, time.time()]
             q_api_co.put(msg)
 
     def display(self, q_co_api):
@@ -42,8 +43,10 @@ class ReliableBroadcast():
 		while True:		
 			msg = q_beb_rb.get()	
 			#msg[0] = ip
-			d = delivered.get(msg[0],None)
-			if d == None: 
+			#msg[2] = time
+			ip = delivered.get(msg[0],None)
+			time = delivered.get(msg[2],None)
+			if ip == None and time == None: 
 				delivered.put(msg)
 				q_rb_beb.put(msg)
 				q_rb_co.put(msg)
@@ -59,9 +62,9 @@ class BestEfforBroadcast():
     
     def deliver(self, q_pp_beb, q_beb_rb):
         while True:
-            data = q_pp_beb.get()
+            msg = q_pp_beb.get()
             #msg = '[{}] {}'.format(data[0][0], data[1]) # msg, user
-            msg = [data[0][0], data[1]]
+            #msg = [data[0][0], data[1]]
             q_beb_rb.put(msg)
 
 class PerfectPoint2PointLinks():         
