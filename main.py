@@ -2,6 +2,7 @@
 import socket
 import argparse
 import threading
+from threading import Lock
 import Queue
 import time
 
@@ -23,14 +24,29 @@ class Application():
             print(q_co_api.get())
 
 class CausalOrderBroadcast():
-    def __init__(self):
-        print('start co')
-
-    def broadcast(self, q_api_co, q_co_rb):
-        pass
+    def broadcast(self, q_api_co, q_co_rb, V):
+        lsn = 0
+        while True:
+            m = q_api_co.get()
+            W = V
+            W[0] = lsn
+            lsn += 1
+            q_co_rb.put(W, m)
     
-    def deliver(self, q_rb_co, q_co_api):
-        pass
+    def deliver(self, q_rb_co, q_co_api, V, mutex):
+        pending = []
+        while True:
+            data = None
+            try:
+                data = q_rb_co.get_nowait()
+            except:
+                pass
+            if data:
+                pending.append(data)
+            for p in pending:
+                mutex.acquire()
+                print(data)
+                mutex.release()         
 
 class ReliableBroadcast():
 	def broadcast(self, q_co_rb, q_rb_beb):
@@ -66,48 +82,51 @@ class BestEfforBroadcast():
 
 class PerfectPoint2PointLinks():         
     def server(self, host, q_pp_beb):
-        s = socket.socket()
-        s.bind((host, port))
-        s.listen(len(users))
-        while True:
-            c, addr = s.accept()
-            t = threading.Thread(target=self.deliver, args=[c, addr, q_pp_beb])
-            t.start()
+        pass
+        # s = socket.socket()
+        # s.bind((host, port))
+        # s.listen(len(users))
+        # while True:
+        #     c, addr = s.accept()
+        #     t = threading.Thread(target=self.deliver, args=[c, addr, q_pp_beb])
+        #     t.start()
 
     def deliver(self, client, source, q_pp_beb):
-        while True:
-            # Data received from client
-            data = client.recv(1024)
-            if data:
-                # Compose the message to populate the FIFO
-                msg = [source, data]
-                # Put the message into the FIFO
-                q_pp_beb.put(msg)
+        pass
+        # while True:
+        #     # Data received from client
+        #     data = client.recv(1024)
+        #     if data:
+        #         # Compose the message to populate the FIFO
+        #         msg = [source, data]
+        #         # Put the message into the FIFO
+        #         q_pp_beb.put(msg)
 
     def send(self, q_beb_pp):
         connections = {}
 
         while True:
             data = q_beb_pp.get()
-            queue = connections.get(data[0], None)
-            if queue == None:
-                q = Queue.Queue()
-                q.put(data)
-                connections.update([(data[0], q)])
-                t = threading.Thread(target=self.send_t, args=[q])
-                t.start()
-            else:
-                queue.put(data)
+            print(data)
+            # queue = connections.get(data[0], None)
+            # if queue == None:
+            #     q = Queue.Queue()
+            #     q.put(data)
+            #     connections.update([(data[0], q)])
+            #     t = threading.Thread(target=self.send_t, args=[q])
+            #     t.start()
+            # else:
+            #     queue.put(data)
 
     def send_t(self, queue):
         data = queue.get()
 
-        s = socket.socket()
-        s.connect((data[0], port))
+        # s = socket.socket()
+        # s.connect((data[0], port))
 
-        while True:
-            s.sendall(data[1])
-            data = queue.get()
+        # while True:
+        #     s.sendall(data[1])
+        #     data = queue.get()
 
 if __name__ == '__main__':
     # Input arguments parser
@@ -115,6 +134,9 @@ if __name__ == '__main__':
 
     # Remove self IP from users array
     users.remove(args.ip)
+
+    mutex_v = Lock()
+    V = []
 
     # Create FIFOs
     # Broadcast
@@ -135,14 +157,14 @@ if __name__ == '__main__':
     display_t.start()
 
     co = CausalOrderBroadcast()
-    co_broadcast_t = threading.Thread(target=co.broadcast, args=[qAC, qCR])
-    co_deliver_t = threading.Thread(target=co.deliver, args=[qRC, qCA])
+    co_broadcast_t = threading.Thread(target=co.broadcast, args=[qAC, qCR, V])
+    co_deliver_t = threading.Thread(target=co.deliver, args=[qRC, qCA, V, mutex_v])
     co_broadcast_t.start()
     co_deliver_t.start()
 
     rb = ReliableBroadcast()
     rb_broadcast_t = threading.Thread(target=rb.broadcast, args=[qCR, qRB])
-    rb_deliver_t = threading.Thread(target=rb.deliver, args=[qBR, qRC])
+    rb_deliver_t = threading.Thread(target=rb.deliver, args=[qRB, qBR, qRC])
     rb_broadcast_t.start()
     rb_deliver_t.start()
 
