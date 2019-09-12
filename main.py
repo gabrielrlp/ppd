@@ -38,8 +38,11 @@ class ReliableBroadcast():
 		while True:		
 			msg = q_beb_rb.get()	
 			#msg[0] = ip
-			#delivered.get(msg[0],None)
-
+			d = delivered.get(msg[0],None)
+			if d == None: 
+				delivered.put(msg)
+				q_rb_beb.put(msg)
+				q_rb_co.put(msg)
 
 class BestEfforBroadcast():
     def broadcast(self, q_rb_beb, q_beb_pp):
