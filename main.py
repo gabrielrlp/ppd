@@ -23,10 +23,14 @@ class Application():
             print(q_co_api.get())
 
 class CausalOrderBroadcast():
-	def broadcast(self, q_api_co, q_co_rb):
-	
-	def deliver(self, q_rb_co, q_co_api):
+    def __init__(self):
+        print('start co')
 
+    def broadcast(self, q_api_co, q_co_rb):
+        pass
+    
+    def deliver(self, q_rb_co, q_co_api):
+        pass
 
 class ReliableBroadcast():
 	def broadcast(self, q_co_rb, q_rb_beb):
@@ -54,7 +58,7 @@ class BestEfforBroadcast():
         while True:
             data = q_pp_beb.get()
             #msg = '[{}] {}'.format(data[0][0], data[1]) # msg, user
-			msg = [data[0][0], data[1]]
+            msg = [data[0][0], data[1]]
             q_beb_rb.put(msg)
 
 class PerfectPoint2PointLinks():         
@@ -110,20 +114,38 @@ if __name__ == '__main__':
     users.remove(args.ip)
 
     # Create FIFOs
-    qAB = Queue.Queue() # Queue between Application and Broadcast
-    qBP = Queue.Queue() # Queue between Broadcast and Perfect Point
-    qPB = Queue.Queue() # Queue between Perfect Point and Broadcast
-    qBA = Queue.Queue() # Queue between Broadcast and Application
+    # Broadcast
+    qAC = Queue.Queue() # Queue between Application and Causal Order Broadcast
+    qCR = Queue.Queue() # Queue between Causal Order and Reliable Broadcast
+    qRB = Queue.Queue() # Queue between Reliable Broadcast and Best Effort Broadcast
+    qBP = Queue.Queue() # Queue between Best Effort Broadcast and Perfect Point to Perfect Link
+    # Deliver
+    qPB = Queue.Queue() # Queue between Perfect Point to Perfect Link and Best Effort Broadcast
+    qBR = Queue.Queue() # Queue between Best Effort Broadcast and Reliable Broadcast
+    qRC = Queue.Queue() # Queue between Reliable Broadcast and Causal Order Broadcast
+    qCA = Queue.Queue() # Queue between Causal Order Broadcast and Application
 
     api = Application()
-    kbd_t = threading.Thread(target=api.keyboard, args=[qAB])
-    display_t = threading.Thread(target=api.display, args=[qBA])
+    kbd_t = threading.Thread(target=api.keyboard, args=[qAC])
+    display_t = threading.Thread(target=api.display, args=[qCA])
     kbd_t.start()
     display_t.start()
 
+    co = CausalOrderBroadcast()
+    co_broadcast_t = threading.Thread(target=co.broadcast, args=[qAC, qCR])
+    co_deliver_t = threading.Thread(target=co.deliver, args=[qRC, qCA])
+    co_broadcast_t.start()
+    co_deliver_t.start()
+
+    rb = ReliableBroadcast()
+    rb_broadcast_t = threading.Thread(target=rb.broadcast, args=[qCR, qRB])
+    rb_deliver_t = threading.Thread(target=rb.deliver, args=[qBR, qRC])
+    rb_broadcast_t.start()
+    rb_deliver_t.start()
+
     beb = BestEfforBroadcast()
-    broadcast_t = threading.Thread(target=beb.broadcast, args=[qAB, qBP])
-    deliver_t = threading.Thread(target=beb.deliver, args=[qPB, qBA])
+    broadcast_t = threading.Thread(target=beb.broadcast, args=[qRB, qBP])
+    deliver_t = threading.Thread(target=beb.deliver, args=[qPB, qBR])
     broadcast_t.start()
     deliver_t.start()
 
