@@ -2,14 +2,17 @@
 import socket
 import argparse
 import threading
+from threading import Lock
 import Queue
 import time
+import json
 
 # Arguments Parsing Settings
 parser = argparse.ArgumentParser()
 parser.add_argument('--ip', help="The current machine IP address.", required=True)
 
-users = ['10.32.169.44', '10.32.169.74', '10.32.169.54']
+#users = ['10.32.169.44', '10.32.169.74', '10.32.169.54']
+users = ['localhost']
 port = 8066
 
 class Application():
@@ -17,6 +20,7 @@ class Application():
         while True:
             raw_msg = raw_input('>>> ')
             msg = [raw_msg, time.time()]
+            print("api data: ", msg)
             q_api_co.put(msg)
 
     def display(self, q_co_api):
@@ -24,30 +28,51 @@ class Application():
             print(q_co_api.get())
 
 class CausalOrderBroadcast():
-    def __init__(self):
-        print('start co')
-
-    def broadcast(self, q_api_co, q_co_rb):
-        pass
+    def broadcast(self, q_api_co, q_co_rb, V):
+        lsn = 0
+        while True:
+            m = q_api_co.get()
+            W = V
+            W[0] = lsn
+            lsn += 1
+            #data = [W, m]
+            m.append(W)
+            print("CO data: ", m)
+            q_co_rb.put(m)
     
-    def deliver(self, q_rb_co, q_co_api):
-        pass
+    def deliver(self, q_rb_co, q_co_api, V, mutex):
+        pending = []
+        while True:
+            data = None
+            try:
+                data = q_rb_co.get_nowait()
+            except:
+                pass
+            if data:
+                pending.append(data)
+            for p in pending:
+                mutex.acquire()
+                print("CO data deliver",data)
+                mutex.release()         
 
 class ReliableBroadcast():
 	def broadcast(self, q_co_rb, q_rb_beb):
 		while True:
 			msg = q_co_rb.get()
+			print("RB data: ", msg)
 			q_rb_beb.put(msg)
 
 	def deliver(self, q_rb_beb, q_beb_rb, q_rb_co):
-		while True:		
-			msg = q_beb_rb.get()	
-			#msg[0] = ip
-			#msg[2] = time
+		delivered = {}
+		while True:
+			msg = q_beb_rb.get() 
+			# print("RB data deliver[0]: ",msg[0])
+			# print("RB data deliver[2]: ",msg[2])
+			#msg[0]: ip e  msg[2]: time
 			ip = delivered.get(msg[0],None)
 			time = delivered.get(msg[2],None)
 			if ip == None and time == None: 
-				delivered.put(msg)
+				delivered.update(msg)
 				q_rb_beb.put(msg)
 				q_rb_co.put(msg)
 
@@ -57,18 +82,22 @@ class BestEfforBroadcast():
             msg = q_rb_beb.get()
             # send N vezes para os usuarios
             for u in users:
-                data = [u, msg]
-                q_beb_pp.put(data)
+                # data = [u, msg]
+                msg.insert(0,u) #insere ip na posição 0
+                print("BEB data: ", msg)
+                q_beb_pp.put(msg)
     
     def deliver(self, q_pp_beb, q_beb_rb):
         while True:
-            msg = q_pp_beb.get()
+            data = q_pp_beb.get()
             #msg = '[{}] {}'.format(data[0][0], data[1]) # msg, user
-            #msg = [data[0][0], data[1]]
-            q_beb_rb.put(msg)
+            #msg = [data[0][0], data[1]]#, data[2]]
+            print("BEB data deliver: ",data)
+            q_beb_rb.put(data)
 
 class PerfectPoint2PointLinks():         
     def server(self, host, q_pp_beb):
+        # pass
         s = socket.socket()
         s.bind((host, port))
         s.listen(len(users))
@@ -78,20 +107,24 @@ class PerfectPoint2PointLinks():
             t.start()
 
     def deliver(self, client, source, q_pp_beb):
+        # pass
         while True:
             # Data received from client
-            data = client.recv(1024)
+            json_string = client.recv(1024)
+            data = json.loads(json_string)
             if data:
                 # Compose the message to populate the FIFO
-                msg = [source, data]
+                data.insert(0,source[0])
                 # Put the message into the FIFO
-                q_pp_beb.put(msg)
+            	print("pp2pl data deliver: ",data)
+                q_pp_beb.put(data)
 
     def send(self, q_beb_pp):
         connections = {}
 
         while True:
             data = q_beb_pp.get()
+            # print(data)	
             queue = connections.get(data[0], None)
             if queue == None:
                 q = Queue.Queue()
@@ -109,15 +142,22 @@ class PerfectPoint2PointLinks():
         s.connect((data[0], port))
 
         while True:
-            s.sendall(data[1])
-            data = queue.get()
+			# print("pp2pl data: ",data)
+			data.pop(0) #remove ip
+			msg = json.dumps(data)
+			print("pp2pl data: ",msg)
+			s.sendall(msg)
+			data = queue.get()
 
 if __name__ == '__main__':
     # Input arguments parser
     args = parser.parse_args()
 
     # Remove self IP from users array
-    users.remove(args.ip)
+   # users.remove(args.ip)
+
+    mutex_v = Lock()
+    V = [0, 0]
 
     # Create FIFOs
     # Broadcast
@@ -138,14 +178,14 @@ if __name__ == '__main__':
     display_t.start()
 
     co = CausalOrderBroadcast()
-    co_broadcast_t = threading.Thread(target=co.broadcast, args=[qAC, qCR])
-    co_deliver_t = threading.Thread(target=co.deliver, args=[qRC, qCA])
+    co_broadcast_t = threading.Thread(target=co.broadcast, args=[qAC, qCR, V])
+    co_deliver_t = threading.Thread(target=co.deliver, args=[qRC, qCA, V, mutex_v])
     co_broadcast_t.start()
     co_deliver_t.start()
 
     rb = ReliableBroadcast()
     rb_broadcast_t = threading.Thread(target=rb.broadcast, args=[qCR, qRB])
-    rb_deliver_t = threading.Thread(target=rb.deliver, args=[qBR, qRC])
+    rb_deliver_t = threading.Thread(target=rb.deliver, args=[qRB, qBR, qRC])
     rb_broadcast_t.start()
     rb_deliver_t.start()
 
