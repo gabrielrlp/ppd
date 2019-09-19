@@ -12,10 +12,9 @@ from beb import BestEfforBroadcast
 from pp2pl import PerfectPoint2PointLinks
 
 users = {
-    0: '15.8.142.90',
-    1: '15.8.142.91',
-    2: '15.8.142.92',
-    3: '15.29.225.115'
+    0: '10.32.160.187',
+    1: '10.32.160.190',
+    2: '10.32.160.189'
 }
 
 # Arguments Parsing Settings
@@ -32,7 +31,8 @@ class Application():
     def display(self, q_cob_api):
         while True:
             data = q_cob_api.get()  # [host_key, W, m, t]
-            print('[{}] {}'.format(users[host_key], data[2]))
+            print(data)
+            # print('[{}] {}'.format(users[data[0]], data[2]))
 
 if __name__ == '__main__':
     # Input arguments parser
