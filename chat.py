@@ -13,7 +13,9 @@ from pp2pl import PerfectPoint2PointLinks
 
 users = {
     0: '15.8.142.90',
-    1: '15.8.142.91'
+    1: '15.8.142.91',
+    2: '15.8.142.92',
+    3: '15.29.225.115'
 }
 
 # Arguments Parsing Settings
@@ -29,8 +31,8 @@ class Application():
 
     def display(self, q_cob_api):
         while True:
-            data = q_cob_api.get()  # [host_key, W, m, t, ip]
-            print(data)
+            data = q_cob_api.get()  # [host_key, W, m, t]
+            print('[{}] {}'.format(users[host_key], data[2]))
 
 if __name__ == '__main__':
     # Input arguments parser
@@ -39,7 +41,9 @@ if __name__ == '__main__':
     # Remove self IP from users array
 
     mutex_v = Lock()
-    V = np.zeros(len(users), dtype=int)
+    V = []
+    for i in range(len(users)):
+        V.append(0)
 
     for key in users:
         if users[key] == args.ip:

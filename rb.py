@@ -8,9 +8,10 @@ class ReliableBroadcast():
 		delivered = []
 		while True:
 			data = q_beb_rb.get()  # [host_key, W, m, t, ip]
-			found = True if data in delivered else False
+			del data[-1]
+			msg_time = [data[2], data[3]]
+			found = True if msg_time in delivered else False
 			if not found:
-				delivered.append(data)
+				delivered.append(msg_time)
 				q_rb_beb.put(data)
 				q_rb_cob.put(data)
-				

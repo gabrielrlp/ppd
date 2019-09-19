@@ -2,6 +2,7 @@ import socket
 import threading
 import pickle
 import Queue
+import time
 
 port = 8066
 
@@ -22,7 +23,7 @@ class PerfectPoint2PointLinks():
             if data:
                 data_arr = pickle.loads(data)
                 # Compose the message to populate the FIFO
-                # msg = [source, data]
+                data_arr.append(source[0])
                 # Put the message into the FIFO
                 q_pp_beb.put(data_arr)
 
@@ -48,6 +49,8 @@ class PerfectPoint2PointLinks():
         s.connect((data[-1], port))
 
         while True:
+            del data[-1]
             data_str = pickle.dumps(data)
+            time.sleep(10)
             s.sendall(data_str)
             data = queue.get()
