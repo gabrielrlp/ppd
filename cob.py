@@ -12,7 +12,7 @@ class CausalOrderBroadcast():
     
     def deliver(self, q_rb_cob, q_cob_api, V, mutex):
         while True:
-            data = q_rb_cob.get()  # [host_key, W, m, t, ip]
+            data = q_rb_cob.get()  # [host_key, W, m, t]
             p_key = data[0]
             W = data[1]
             if W[p_key] <= V[p_key]:

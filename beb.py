@@ -12,4 +12,5 @@ class BestEfforBroadcast():
     def deliver(self, q_pp_beb, q_beb_rb):
         while True:
             data = q_pp_beb.get()
+            del data[-1]
             q_beb_rb.put(data)

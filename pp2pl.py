@@ -51,6 +51,5 @@ class PerfectPoint2PointLinks():
         while True:
             del data[-1]
             data_str = pickle.dumps(data)
-            time.sleep(10)
             s.sendall(data_str)
             data = queue.get()
