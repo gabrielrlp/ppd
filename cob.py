@@ -42,9 +42,9 @@ class CausalOrderBroadcast():
             p_key = data[0]
             W = data[1]
             mutex.acquire()
-            if W <= V:
+            if all(W) <= all(V):
                 V[p_key] += 1
-                mutex.release()
                 q_cob_api.put(data)
             else:
                 q_rb_cob.put(data)
+            mutex.release()

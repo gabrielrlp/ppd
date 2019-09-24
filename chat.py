@@ -11,9 +11,9 @@ from beb import BestEfforBroadcast
 from pp2pl import PerfectPoint2PointLinks
 
 users = {
-    0: '172.168.1.2',
-    1: '172.168.1.3',
-    2: '172.168.1.4'
+    0: '10.32.160.190',
+    1: '10.32.160.187',
+    2: '10.32.160.189'
 }
 
 # Arguments Parsing Settings
